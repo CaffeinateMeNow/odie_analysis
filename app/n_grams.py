@@ -8,7 +8,7 @@ from itertools import islice, chain
 
 import ujson
 import pytz
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 import twokenize
 from nltk.corpus import stopwords

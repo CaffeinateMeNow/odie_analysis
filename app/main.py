@@ -1,10 +1,14 @@
+import logging
 import requests
 from typing import Tuple
 
 from fastapi import FastAPI, BackgroundTasks
 from cohort_analysis import summarize_cohort, compare_cohorts
+import config
 
 app = FastAPI()
+
+logging.basicConfig(level=logging.INFO)
 
 
 @app.get("/")
@@ -12,9 +16,22 @@ def read_root():
     return {"Hello": "World"}
 
 
+def auth_to_backend():
+    return
+    creds = {'api_user': {'email': config.BACKEND_EMAIL,
+                          'password': config.BACKEND_PASSWORD}}
+    url = config.BACKEND_HOST + 'login.json'
+    try:
+        resp = requests.post(url, json=creds)
+        resp.raise_for_status()
+    except Exception as e:
+        logging.error(e)
+
+
 def post_summary(cohort_prefix: str, timespan: Tuple[str], post_to: str):
     summary = summarize_cohort(cohort_prefix, timespan)
-    requests.post(post_to, json=summary)
+    auth_to_backend()
+    requests.put(post_to, json={"results": summary})
 
 
 def post_comparison(cohort_prefix_a: str, timespan_a: Tuple[str],
@@ -22,7 +39,8 @@ def post_comparison(cohort_prefix_a: str, timespan_a: Tuple[str],
                     post_to: str):
     comparison = compare_cohorts(cohort_prefix_a, timespan_a,
                                  cohort_prefix_b, timespan_b)
-    requests.post(post_to, json=comparison)
+    auth_to_backend()
+    requests.put(post_to, json={"results": comparison})
 
 
 @app.get("/cohort_summary")

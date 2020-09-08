@@ -1,4 +1,5 @@
 import pickle
+import logging
 from pathlib import Path
 from collections import defaultdict, Counter
 
@@ -7,16 +8,17 @@ import numpy as np
 
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from datasketch import MinHash, MinHashLSH
 from scattertext.termscoring.ScaledFScore import ScaledFScore
 
 from n_grams import tweets_to_n_gram_counts, extract_tweet_text,\
     tokenize_tweet, tweet_text_to_n_grams
+import config
 
 
 def get_cohort_tweet_text(cohort_prefix, timespan):
-    client = Elasticsearch()
+    client = Elasticsearch(config.ELASTICSEARCH_HOST)
 
     s = Search(using=client, index=f'{cohort_prefix}*').query("match_all")\
         .filter({"range":
@@ -26,11 +28,12 @@ def get_cohort_tweet_text(cohort_prefix, timespan):
 
 
 def get_cohort_tweets(cohort_prefix, timespan):
-    client = Elasticsearch()
+    client = Elasticsearch(config.ELASTICSEARCH_HOST)
 
     s = Search(using=client, index=f'{cohort_prefix}*').query("match_all")\
         .filter({"range":
                 {"@timestamp": {"gte": timespan[0], "lte": timespan[1]}}})
+    logging.info(s)
     tweets = {}
     for hit in tqdm(s.scan(), desc='Reading tweets'):
         hit = hit.to_dict()
@@ -123,8 +126,8 @@ def summarize_cohort(cohort_prefix, timespan, top_k=50):
 
 
 def calc_f1_scores(n_grams_a, n_grams_b):
-    all_n_grams_a = sum(n_grams_a.values(), start=Counter())
-    all_n_grams_b = sum(n_grams_b.values(), start=Counter())
+    all_n_grams_a = sum(n_grams_a.values(), Counter())
+    all_n_grams_b = sum(n_grams_b.values(), Counter())
     vocab = sorted(list((all_n_grams_a + all_n_grams_b).keys()))
     n_gram_a_counts = [all_n_grams_a[v] for v in vocab]
     n_gram_b_counts = [all_n_grams_b[v] for v in vocab]
